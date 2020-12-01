@@ -24,6 +24,28 @@ def spit_df_XY(df,class_index=None):
 
     return X,Y
 
+
+# Alexandre
+def rm_raw_without_class_id(X,Y):
+    """ Remove the samples with missing class index.
+
+    A missing value is expected to be 
+
+    Parameters:
+        X (ndarray[nb_sample,nb_features]) : The samples set to be cleaned.
+        Y (ndarray[nb_samples]) : The class index for each samples.
+
+    Returns:
+        X_res (ndarray[nb_sample,nb_features]) : The cleaned samples set.
+        Y_res (ndarray[nb_samples]) : The cleaned class index for each samples.
+    """
+    Y_nan = pd.Series(Y).notna()
+    X_res = X[Y_nan]
+    Y_res = Y[Y_nan]
+
+    return X_res,Y_res
+
+
 # Guillaume
 def fill_missing_values(X,Y,method='med'):
     """Replace NaN (missing values) by a numerical value in the set of samples.
@@ -66,6 +88,7 @@ def fill_missing_values(X,Y,method='med'):
             X[:,j]=np.nan_to_num(X[:,j],nan=np.nanmean(X[:,j]))
 
     return X
+
 
 # Guillaume
 def normalize_data(X):
