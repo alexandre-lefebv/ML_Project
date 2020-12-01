@@ -3,6 +3,27 @@ import numpy  as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Alexandre
+def spit_df_XY(df,class_index=None):
+    """ Split the data frame into raws of features and their class.
+    
+    Parameters:
+        df (pandas.core.frame.DataFrame) : The data set to be split.
+        class_index (string or None) : The column to be used as the class index.
+            The default column used for the class index is the last one.
+    
+    Returns:
+        X_res (ndarray[nb_sample,nb_features]) : Raws of features representing the
+            samples.
+        Y_res (ndarray[nb_samples]) : The class index for each samples.
+    """
+    if class_index == None:
+        class_index = df.columns[-1]
+    X = df.drop(columns=class_index).to_numpy()
+    Y = df[class_index].to_numpy()
+
+    return X,Y
+
 # Guillaume
 def fill_missing_values(X,Y,method='med'):
     """Replace NaN (missing values) by a numerical value in the set of samples.
