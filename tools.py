@@ -46,6 +46,44 @@ def rm_raw_without_class_id(X,Y):
     return X_res,Y_res
 
 
+# Alexandre
+def replace_string_by_int(X):
+    """ Replace binary string features by binary int 0 or 1
+
+    Parameters:
+        X (ndarray[nb_sample,nb_features]) : The samples set to be processed.
+
+    Returns:
+        X_res (ndarray[nb_sample,nb_features]) : The processed samples set.
+    """
+    
+    def try_float_convertion(x):
+        try:
+            return np.array(x,dtype=float)
+        except:
+            return x
+    
+    n_samp,n_feat = np.shape(X)
+    X_res = np.zeros((n_samp,n_feat),dtype=float)
+    
+    for col in range(n_feat):
+        X_feat = try_float_convertion(X[:,col])
+        
+        # Data type of the feature is float
+        if X_feat.dtype==float:
+            X_res[:,col] = np.array(X_feat)
+            continue
+
+        # Data type is not float so str is expected
+        X_feat_unique = pd.Series(X_feat).dropna().unique()
+        for k in range(len(X_feat_unique)):
+            feat_value = X_feat_unique[k]
+            X_feat[X_feat==feat_value] = k
+        X_res[:,col] = np.array(X_feat)
+        
+    return X_res
+
+
 # Guillaume
 def fill_missing_values(X,Y,method='med'):
     """Replace NaN (missing values) by a numerical value in the set of samples.
