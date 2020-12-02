@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 # Alexandre
-def spit_df_XY(df,class_index=None):
+def split_df_XY(df,class_index=None):
     """ Split the data frame into raws of features and their class.
     
     Parameters:
@@ -13,8 +13,8 @@ def spit_df_XY(df,class_index=None):
             The default column used for the class index is the last one.
     
     Returns:
-        X_res (ndarray[nb_sample,nb_features]) : Raws of features representing the
-            samples.
+        X_res (ndarray[nb_sample,nb_features]) : Raws of features representing
+            the samples.
         Y_res (ndarray[nb_samples]) : The class index for each samples.
     """
     if class_index == None:
@@ -108,14 +108,12 @@ def fill_missing_values(X,Y,method='med'):
     for j in range(m):
 
         if method=='med':
-
             # replace NaN of each class by the median of non-NaN of this class
             X[Y==0,j]=np.nan_to_num(X[Y==0,j],nan=np.nanmedian(X[Y==0,j]))
             X[Y==1,j]=np.nan_to_num(X[Y==1,j],nan=np.nanmedian(X[Y==1,j]))
 
             # replace NaN of NaN-only class by the median of the feature
             X[:,j]=np.nan_to_num(X[:,j],nan=np.nanmedian(X[:,j]))
-
         elif method=='avg':
 
             # replace NaN of each class by the mean of non-NaN of this class
