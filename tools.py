@@ -174,3 +174,28 @@ def select_features(X,select_features):
         return X
 
 
+# Alexandre
+def clean_data(df,class_index=None,fill_missing_with='median'):
+    """ Wrapper for applying all the preprocessing funtions in one call.
+
+    Parameters:
+        df (pandas.core.frame.DataFrame) : The dataset to be preprocessed.
+        class_index (str or None) : The column to be used as the class index.
+            The default column used for the class index is the last one.
+        fill_missing_with (str) : The method to use to fill the missing (nan)
+            datas. Allowed values are 'average' and 'median'.
+
+    Returns:
+        X (ndarray[nb_sample,nb_features]) : Raws of features
+            representing the samples.
+        Y (ndarray[nb_samples]) : The class index for each samples.
+
+    """
+    X,Y = split_df_XY(df,class_index=class_index)
+    X,Y = rm_raw_without_class_id(X,Y)
+    X = replace_string_by_int(X)
+    Y = replace_string_by_int(Y)
+    print()
+    X = fill_missing_values(X,Y,fill_missing_with=fill_missing_with)
+
+    return X,Y
