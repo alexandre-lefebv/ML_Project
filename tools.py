@@ -1,7 +1,56 @@
 
+# -*- coding: utf-8 -*-
+
+"""tools.py: This file contain the functions used for the developpement project
+in machine learning."""
+
+__author__ = "Guillaume Ghienne, Aleandre Lefebvre"
+__date__ = "December 2020"
+__license__ = "Libre"
+__version__ = "1.0"
+__maintainer__ = "Not maintened"
+__email__ = ["guillaume.ghienne@imt-atlantique.net",
+            "alexandre.lefebvre@imt-atlantique.net"]
+__status__ = "Complet"
+
+
+
 import numpy  as np
 import pandas as pd
 from sklearn.decomposition import PCA
+
+
+# -------------------------- Import the dataset -------------------------- #
+
+
+# Guillaume
+def read_data(fname):
+    """ Read a dataset for a ML project.
+
+    The dataset must be in a text format with ',' characters between the
+    columns. Data type of columns must be int, float or string. Columns name
+    must be provided.
+    Usually using ' ' and '\t' in the file is not recommanded as it uselessly
+    increase the size of the file and this function will ignore extra ' ' and
+    '\t'.
+    The missing value must be represented by '' (no characters between two ',')
+    and not by '?', 'Nan' or any words of this kind since they would be read as
+    string (and thus interpreted as non-missing data). If the file doesn't
+    satisfy this rule, it must be modified before beeing read by this function.
+
+    Parameters:
+        fname (str): Absolute or relative path to the file containing the data.
+
+    Returns:
+        df (pandas.core.frame.DataFrame) : The raw dataframe.
+    """
+
+    df = pd.read_csv(fname,sep='\s*\t*[,]\s*\t*',engine='python')
+    return df
+
+
+# -------------------------- Clean the dataset -------------------------- #
+
 
 # Alexandre
 def split_df_XY(df,class_index=None):
@@ -152,28 +201,6 @@ def normalize_data(X):
     return X/norms # normalized
 
 
-# Guillaume
-def select_features(X,select_features):
-    """Select some features to keep and eventually adjust the set of samples.
-
-    Parameters:
-        X (numpy.ndarray) : The samples set.
-        select_features (int or list of int): Either a list of index of features
-            to keep or an int as number of features to keep using ACP.
-
-    Returns:
-        X (numpy.ndarray) : Keeped (and adjusted) features.
-
-    """
-    if type(select_features)==list:
-        X=X[:,select_features]
-        return X
-    elif type(select_features)==int:
-        acp=PCA(select_features)
-        X=acp.fit_transform(X)
-        return X
-
-
 # Alexandre
 def clean_data(df,class_index=None,fill_missing_with='median'):
     """ Wrapper for applying all the preprocessing funtions in one call.
@@ -199,3 +226,68 @@ def clean_data(df,class_index=None,fill_missing_with='median'):
     X = fill_missing_values(X,Y,fill_missing_with=fill_missing_with)
 
     return X,Y
+
+
+
+# --------------------------  Split the dataset -------------------------- #
+
+
+# Alexandre
+def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
+    """ Split data between training and test set, define the cross-validation.
+
+    Parameters:
+        X (ndarray[nb_sample,nb_features]) : Raws of features
+            representing the samples.
+        Y (ndarray[nb_samples]) : The class index for each samples.
+        test_size (float or int, default=0.25): If float, should be between 0.0
+            and 1.0 and represent the proportion of the dataset to include in
+            the test split. If int, represents the absolute number of test
+            samples.
+        cv_test_size (float or int, default=0.1): If float, should be between
+            0.0 and 1.0 and represent the proportion of the training dataset to
+            include in the test split for the cross-validation procedure. If
+            int, represents the absolute number of test samples.
+        n_splits (int, default=10): Number of re-shuffling and splitting
+            iterations for the cross-validation procedure.
+
+    Returns:
+        x_train (ndarray[nb_train_sample,nb_features]): Raws of features
+            representing the train samples.
+        x_test  (ndarray[nb_test_sample ,nb_features]): Raws of features
+            representing the test samples.
+        y_train (ndarray[nb_train_sample]): The class index of train samples.
+        y_test  (ndarray[nb_test_sample ]): The class index of test samples.
+        cvp (sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+
+    """
+
+    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size)
+    cvp = ShuffleSplit(test_size=test_size,n_splits=1000)
+
+    return x_train, x_test, y_train, y_test, cvp
+
+# --------------------------  Train the model -------------------------- #
+
+
+# Guillaume
+def select_features(X,select_features):
+    """Select some features to keep and eventually adjust the set of samples.
+
+    Parameters:
+        X (numpy.ndarray) : The samples set.
+        select_features (int or list of int): Either a list of index of features
+            to keep or an int as number of features to keep using ACP.
+
+    Returns:
+        X (numpy.ndarray) : Keeped (and adjusted) features.
+
+    """
+    if type(select_features)==list:
+        X=X[:,select_features]
+        return X
+    elif type(select_features)==int:
+        acp=PCA(select_features)
+        X=acp.fit_transform(X)
+        return X,
