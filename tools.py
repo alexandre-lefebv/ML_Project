@@ -9,7 +9,7 @@ def split_df_XY(df,class_index=None):
     
     Parameters:
         df (pandas.core.frame.DataFrame) : The data set to be split.
-        class_index (string or None) : The column to be used as the class index.
+        class_index (str or None) : The column to be used as the class index.
             The default column used for the class index is the last one.
     
     Returns:
@@ -63,6 +63,12 @@ def replace_string_by_int(X):
         except:
             return x
     
+    if len(np.shape(X)) == 1:
+        reshaped=True
+        X=X[:,np.newaxis]
+    else:
+        reshaped=False
+
     n_samp,n_feat = np.shape(X)
     X_res = np.zeros((n_samp,n_feat),dtype=float)
     
@@ -80,12 +86,14 @@ def replace_string_by_int(X):
             feat_value = X_feat_unique[k]
             X_feat[X_feat==feat_value] = k
         X_res[:,col] = np.array(X_feat)
-        
+    
+    if reshaped:
+        X_res = X_res[:,0]  
     return X_res
 
 
 # Guillaume
-def fill_missing_values(X,Y,method='med'):
+def fill_missing_values(X,Y,fill_missing_with='median'):
     """Replace NaN (missing values) by a numerical value in the set of samples.
 
     For each features, apply method over non-NaN values for each of the two
@@ -95,9 +103,9 @@ def fill_missing_values(X,Y,method='med'):
     Parameters:
         X (numpy.ndarray) : The samples set.
         Y (numpy.ndarray) : The class index for each samples.
-        method (string)   : The method to use to fill the missing datas
-                            - 'avg' to use the mean of samples of the same class
-                            - 'med' (default) to use the median.
+        fill_missing_with (str) : The method to use to fill the missing datas
+            - 'avg' to use the mean of samples of the same class
+            - 'med' (default) to use the median.
 
     Returns:
         X (numpy.ndarray) : The filled samples set.
@@ -107,14 +115,14 @@ def fill_missing_values(X,Y,method='med'):
 
     for j in range(m):
 
-        if method=='med':
+        if fill_missing_with=='median':
             # replace NaN of each class by the median of non-NaN of this class
             X[Y==0,j]=np.nan_to_num(X[Y==0,j],nan=np.nanmedian(X[Y==0,j]))
             X[Y==1,j]=np.nan_to_num(X[Y==1,j],nan=np.nanmedian(X[Y==1,j]))
 
             # replace NaN of NaN-only class by the median of the feature
             X[:,j]=np.nan_to_num(X[:,j],nan=np.nanmedian(X[:,j]))
-        elif method=='avg':
+        elif fill_missing_with=='average':
 
             # replace NaN of each class by the mean of non-NaN of this class
             X[Y==0,j]=np.nan_to_num(X[Y==0,j],nan=np.nanmean(X[Y==0,j]))
@@ -145,66 +153,24 @@ def normalize_data(X):
 
 
 # Guillaume
-def select_features(X,select):
+def select_features(X,select_features):
     """Select some features to keep and eventually adjust the set of samples.
 
     Parameters:
         X (numpy.ndarray) : The samples set.
-        select            : Either a list of index of features to keep or an int
-                            as number of features to keep using ACP
+        select_features (int or list of int): Either a list of index of features
+            to keep or an int as number of features to keep using ACP.
 
     Returns:
         X (numpy.ndarray) : Keeped (and adjusted) features.
 
     """
-    if type(select)==list:
-        X=X[:,select]
+    if type(select_features)==list:
+        X=X[:,select_features]
         return X
-    elif type(select)==int:
-        acp=PCA(select)
+    elif type(select_features)==int:
+        acp=PCA(select_features)
         X=acp.fit_transform(X)
         return X
 
-    
-# Guillaume
-def split_data(X,Y,train_size=1/3,method='random'):
-    """Split data into training and testing data
 
-    Parameters:
-        X (numpy.ndarray) : The samples set.
-        Y (numpy.ndarray) : The class index for each samples.
-        train_size        : The proportion of training samples if btw 0 and 1,
-                            the number of training sample otherwise.
-        method (string)   : - 'random' for random selection
-                          : - 'linear' to keep the order of samples
-    Returns:
-        X_train (ndarray) : Training samples
-        Y_train (ndarray) : Training class indexes
-        X_test (ndarray)  : Test samples
-        Y_test (ndarray)  : Test class indexes.
-
-    """
-    n=np.shape(X)[0]
-
-    if train_size<1:
-        train_size=int(n*train_size)
-
-    if method=='random':
-
-        X_test=np.zeros((n-train_size,np.shape(X)[1]))
-        Y_test=np.zeros(n-train_size)
-        X_train,Y_train=X,Y
-
-        for i in range(n-train_size):
-            index=np.random.randint(0,np.shape(X_train)[0])
-            X_test[i,:],Y_test[i]=X_train[index],Y_train[index]
-            X_train,Y_train=np.delete(X_train,index,0),np.delete(Y_train,index)
-
-        return X_train,Y_train,X_test,Y_test
-
-    elif method=='linear':
-
-        X_train,Y_train=X[:n,:],Y[:n]
-        X_test,Y_test=X[n:,:],Y[n:]
-
-        return X_train,Y_train,X_test,Y_test
