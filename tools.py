@@ -17,8 +17,14 @@ __status__ = "Complet"
 
 import numpy  as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split, ShuffleSplit, cross_val_score
 from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split, ShuffleSplit
+from sklearn.ensemble import RandomForestClassifier,AdaBoostClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import metrics
 
 
 # -------------------------- Import the dataset -------------------------- #
@@ -269,6 +275,7 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
 
     return x_train, x_test, y_train, y_test, cvp
 
+
 # --------------------------  Train the model -------------------------- #
 
 
@@ -287,7 +294,8 @@ def get_acp_projector(X,select_features):
             |    X (numpy.ndarray[nb_test_sample,nb_features]): A samples set.
             |
             |  Returns:
-            |    projected X (numpy.ndarray[nb_test_sample,optimised_features]).
+            |    projected X (numpy.ndarray[nb_test_sample,optimised_features]):
+            |        Optimal ACP projection of the features of X.
 
     """
 
@@ -305,7 +313,7 @@ def get_acp_projector(X,select_features):
 
 
 # Alexandre
-def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', verbose=True, model_param={}):
+def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', verbose=False, model_param={}):
     """ Train a binary classification model and return the classifier.
 
     Parameters:
@@ -316,8 +324,9 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
             procedure.
         acp_components (int or list of int): Either a list of index of features
             to keep or an int as number of features to keep using ACP.
-        model (str, default='rd_forest'): Type of classifier to train. Possible
-            values are 'rd_forest','decision_tree','adaBoost','gaussian_kernel'.
+        model (str, default='rd_forest'): Type of classifier to train. Valide
+            models are 'adaBoost', 'decision_tree', 'svm_gaussian_kernel' and
+            'rd_forest'.
         verbose (bool, default=True): If True, plot some information or curves
             (depending on the trained model) about the training process.
         model_param (dict(str: value)): Dict containing values to overide some
@@ -325,14 +334,14 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
             on the parameter. If a key is not an optional parameter of the
             model, it will be ignored.
 
-    Returns:
+     Returns:
         classifier (function): The trained classifier.
             |  Parameters:
             |    X (ndarray[nb_test_sample ,nb_features]): A samples set.
             |
             |  Returns:
             |    predicted_Y (ndarray[nb_test_sample]): The predicted class
-            |       indexes for X
+            |       indexes for X.
 
     """
 
@@ -349,8 +358,9 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
         if 'max_depth' in model_param:
             max_depth=model_param['max_depth']
         projected_classifier = classifier_decision_tree(projected_X,y_train,cvp,depth=depth,max_depth=max_depth,verbose=verbose)
-    elif model=='gaussian_kernel':
-        projected_classifier
+    elif model=='svm_gaussian_kernel':
+
+        projected_classifier = 
     elif model=='rd_forest':
         n_trees=100
         depth=None
@@ -372,3 +382,218 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
 
 
 # --------------------------  Test the model -------------------------- #
+
+
+#Guillaume
+def test_classifier(classifier,x_test,y_test):
+    """Return information about the classification.
+
+    Parameters:
+        classifier(function): the classifier
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |        indexes for X.
+        x_test(ndarray): The samples of the test set.
+        y_test(ndarray) : The class indexes of test samples.
+
+    Returns:
+        None
+
+    """
+    y_pred=classifier(x_test)
+    mat=metrics.confusion_matrix(y_test,y_pred)
+    print("Number of True Positiv:%s"%mat[1,1])
+    print("Number of True Negativ:%s"%mat[0,0])
+    print("Number of False Positiv:%s"%mat[0,1])
+    print("Number of False Negativ:%s"%mat[1,0])
+    print("\nComplet Report")
+    print(metrics.classification_report(y_test,y_pred))
+    print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,average=None))
+    print("\nrecall= %s"%metrics.recall_score(y_test,y_pred,average=None))
+    print("\naccuracy= %s"%metrics.accuracy_score(y_test,y_pred))
+
+
+# -------------------------- Models -------------------------- #
+
+
+#Guillaume
+def classifier_ada_boost(x_train, y_train):
+    """Return an ada boost classifier.
+
+    Parameters:
+        x_train(ndarray): The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |        indexes for X.
+
+    """
+    class_boost = AdaBoostClassifier()
+    class_boost.fit(x_train, y_train)
+
+    def classifier(x_test):
+        return class_boost.predict(x_test)
+    return classifier
+
+
+#Alexandre
+def classifier_svm_gaussian_kernel(x_train,y_train,cvp,bandwidth='sylverman'):
+    """Return a gaussian kernel classifier.
+
+    Parameters:
+        x_train(ndarray) : The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+        cvp(sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        bandwidth(float or 'sylverman', default='sylverman'): The bandwidth of
+            the kernel, ie the variance of the gaussians.
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |        indexes for X.
+
+    """
+
+    if bandwidth=='sylverman':
+        bandwidth=1.06*n**(-1/5)
+
+    if True:
+        gammas = np.linspace(0, 100*1/n, 100)
+        RMSE_svm = []
+
+        for gamma in gammas:
+            class_svm = SVC(kernel='rbf',gamma=gamma)
+            RMSE_svm[i] = np.median(np.sqrt(-cross_val_score(class_svm,
+                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp)))
+        depth=depths[np.argmin(RMSE_svm)]
+
+        if verbose==True:
+            plt.plot(gammas,RMSE_svm)
+            plt.xlabel("Gamma")
+            plt.ylabel("RMSE")
+            plt.title("Computation of the optimal gamma")
+            plt.show()
+
+    class_svm = SVC(kernel='rbf',gamma=gamma)
+    class_svm.fit(x_train, y_train)
+    def classifier(x_test):
+        return class_svm.predict(x_test)
+    return classifier
+
+
+x = np.linspace(-0,7,1000).reshape(-1, 1)
+y = kde.score_samples(x)
+
+
+#Guillaume
+def classifier_decision_tree(x_train,y_train,cvp, depth=None,max_depth=10,verbose=False):
+    """Return a decision tree classifier.
+
+    Parameters:
+        x_train(ndarray) : The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+        cvp(sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        depth(int): The desired depth of the tree (optimal if None)
+        max_depth(int, default=10): The maximal depth to search the optimal
+            depth.
+        verbose (bool, default=True): If True, plot some information or curves
+            (depending on the trained model) about the training process.
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |        indexes for X.
+
+    """
+
+    if depth==None:
+        depths = list(range(1, max_depth))
+        RMSE_tree = []
+        for depth in depths:
+            class_tree = DecisionTreeClassifier(max_depth=depth)
+            RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
+                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+        depth=depths[np.argmin(RMSE_tree)]
+
+        if verbose==True:
+            plt.plot(depths,RMSE_tree)
+            plt.xlabel("Depth")
+            plt.ylabel("RMSE")
+            plt.title("Computation of the optimal tree depth")
+            plt.show()
+
+    tree = DecisionTreeClassifier(max_depth=depth)
+    tree.fit(x_train, y_train)
+
+    def classifier(x_test):
+        return tree.predict(x_test)
+    return classifier
+
+
+#Guillaume
+def classifier_random_forest(x_train, y_train,cvp, n_trees=100,depth=None, max_depth=10,verbose=False):
+    """Return a random forest classifier.
+
+    Parameters:
+        x_train (ndarray): The samples of the training set.
+        y_train (ndarray) : The class indexes of training samples.
+        cvp (sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        depth (int): The desired depth of the trees (optimal if None)
+        max_depth(int, default=10): The maximal depth to search the optimal
+            depth.
+        verbose (bool): Boolean to disp some informations
+    
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |        indexes for X.
+
+    """
+
+    if depth==None:
+        depths = np.linspace(1, max_depth, max_depth)
+        RMSE_tree = []
+        for depth in depths:
+            class_tree = DecisionTreeClassifier(max_depth=depth)
+            RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
+                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+        depth=depths[np.argmin(RMSE_tree)]
+
+        if verbose==True:
+            plt.plot(depths,RMSE_tree)
+            plt.xlabel("Depth")
+            plt.ylabel("RMSE")
+            plt.title("Computation of the optimal tree depth")
+            plt.show()
+
+    forest = RandomForestClassifier(n_estimators=n_trees,max_depth=depth)
+    forest.fit(x_train, y_train)
+
+    def classifier(x_test):
+        return forest.predict(x_test)
+
+    return classifier
