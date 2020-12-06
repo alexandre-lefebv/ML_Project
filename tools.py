@@ -398,3 +398,27 @@ def classifier_ada_boost(x_train, y_train):
     def ada_boost_classifier(x_test):
         return class_boost.predict(x_test)
     return ada_boost_classifier
+
+#Guillaume
+def test_classifier(classifier,x_test,y_test):
+    """Return information about the classification.
+
+    Parameters:
+        classifier(function): the classifier
+        x_test(ndarray): The samples of the test set.
+        y_test(ndarray) : The class indexes of test samples.
+
+    Return: None
+
+    """
+    y_pred=classifier(x_test)
+    mat=metrics.confusion_matrix(y_test,y_pred)
+    print("Number of True Positiv:%s"%mat[1,1])
+    print("Number of True Negativ:%s"%mat[0,0])
+    print("Number of False Positiv:%s"%mat[0,1])
+    print("Number of False Negativ:%s"%mat[1,0])
+    print("\nComplet Report")
+    print(metrics.classification_report(y_test,y_pred))
+    print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,average=None))
+    print("\nrecall= %s"%metrics.recall_score(y_test,y_pred,average=None))
+    print("\naccuracy= %s"%metrics.accuracy_score(y_test,y_pred))
