@@ -495,10 +495,6 @@ def classifier_svm_gaussian_kernel(x_train,y_train,cvp,bandwidth='sylverman'):
     return classifier
 
 
-x = np.linspace(-0,7,1000).reshape(-1, 1)
-y = kde.score_samples(x)
-
-
 #Guillaume
 def classifier_decision_tree(x_train,y_train,cvp, depth=None,max_depth=10,verbose=False):
     """Return a decision tree classifier.
