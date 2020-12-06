@@ -18,6 +18,11 @@ __status__ = "Complet"
 import numpy  as np
 import pandas as pd
 from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn import metrics
 
 
 # -------------------------- Import the dataset -------------------------- #
@@ -291,3 +296,105 @@ def select_features(X,select_features):
         acp=PCA(select_features)
         X=acp.fit_transform(X)
         return X,
+
+#--------------------------Model--------------------------------------------------#
+
+#Guillaume
+def classifier_decision_tree(x_train,y_train,cvp, depth=None,max_depth=10,verbose=False):
+    """Return a decision_tree classifier.
+
+    Parameters:
+        x_train(ndarray) : The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+        cvp(sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        depth(int): the desired depth of the tree (optimal if None)
+        max_depth(int): the maximal depth to search the optimal depth
+        verbose(bool): Boolen to disp some informations
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_class (ndarray):
+
+    """
+    if depth==None:
+        depths = np.linspace(1, max_depth, max_depth)
+        tab_RMSE_tree = np.zeros(max_depth)
+        for i in range(n_depths):
+            class_tree = DecisionTreeClassifier(max_depth=depths[i])
+            tab_RMSE_tree[i] = np.median(np.sqrt(-cross_val_score(class_tree,
+                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp)))
+        depth=depths[np.argmin(tab_RMSE_tree)]
+    tree = DecisionTreeClassifier(max_depth=depth)
+    tree.fit(x_train, y_train)
+    if verbose==True:
+        plt.plot(depths,tab_RMSE_tree)
+        plt.show()
+    def classifier(x_test):
+        return tree.predict(x_test)
+    return tree_classifier
+
+#Guillaume
+def classifier_random_forest(x_train, y_train,cvp, n_trees=100,depth=None, max_depth=10,verbose=False):
+    """Return a random forest classifier.
+
+    Parameters:
+        x_train(ndarray): The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+        cvp(sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        depth(int): the desired depth of the trees (optimal if None)
+        max_depth(int): the maximal depth to search the optimal depth
+        verbose(bool): Boolean to disp some informations
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_class (ndarray):
+
+    """
+    if depth==None:
+        depths = np.linspace(1, max_depth, max_depth)
+        tab_RMSE_tree = np.zeros(max_depth)
+        for i in range(n_depths):
+            class_tree = DecisionTreeClassifier(max_depth=depths[i])
+            tab_RMSE_tree[i] = np.median(np.sqrt(-cross_val_score(class_tree, x_train, y_train,scoring='neg_mean_squared_error', cv=cvp)))
+        depth=depths[np.argmin(tab_RMSE_tree)]
+    forest = RandomForestClassifier(n_estimators=n_trees,max_depth=depth)
+    forest.fit(x_train, y_train)
+    if verbose==True:
+        plt.plot(depths,tab_RMSE_tree)
+        plt.show()
+    def classifier(x_test):
+        return forest.predict(x_test)
+    return forest_classifier
+
+#Guillaume
+def classifier_ada_boost(x_train, y_train):
+    """Return an ada boost classifier.
+
+    Parameters:
+        x_train(ndarray): The samples of the training set.
+        y_train(ndarray) : The class indexes of training samples.
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    sample (ndarray): A samples set.
+            |
+            |  Returns:
+            |    predicted_class (ndarray):
+
+    """
+    class_boost = AdaBoostClassifier()
+    class_boost.fit(x_train, y_train)
+    def ada_boost_classifier(x_test):
+        return class_boost.predict(x_test)
+    return ada_boost_classifier
