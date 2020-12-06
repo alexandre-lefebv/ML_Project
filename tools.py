@@ -18,6 +18,7 @@ __status__ = "Complet"
 import numpy  as np
 import pandas as pd
 from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split, ShuffleSplit
 
 
 # -------------------------- Import the dataset -------------------------- #
@@ -264,7 +265,7 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
     """
 
     x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size)
-    cvp = ShuffleSplit(test_size=test_size,n_splits=1000)
+    cvp = ShuffleSplit(test_size=cv_test_size,n_splits=1000)
 
     return x_train, x_test, y_train, y_test, cvp
 
@@ -272,7 +273,7 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
 
 
 # Guillaume
-def select_features(X,select_features):
+def get_acp_projector(X,select_features):
     """Select some features to keep and eventually adjust the set of samples.
 
     Parameters:
@@ -281,13 +282,93 @@ def select_features(X,select_features):
             to keep or an int as number of features to keep using ACP.
 
     Returns:
-        X (numpy.ndarray) : Keeped (and adjusted) features.
+        pojector (function): The trained classifier.
+            |  Parameters:
+            |    X (numpy.ndarray[nb_test_sample,nb_features]): A samples set.
+            |
+            |  Returns:
+            |    projected X (numpy.ndarray[nb_test_sample,optimised_features]).
 
     """
+
     if type(select_features)==list:
-        X=X[:,select_features]
-        return X
+        def pojector(X):
+            return X[:,select_features]
+
     elif type(select_features)==int:
         acp=PCA(select_features)
-        X=acp.fit_transform(X)
-        return X,
+        X=acp.fit(X)
+        def pojector(X):
+            return acp.transform(X)
+
+    return pojector
+
+
+# Alexandre
+def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', verbose=True, model_param={}):
+    """ Train a binary classification model and return the classifier.
+
+    Parameters:
+        x_train (ndarray[nb_train_sample,nb_features]): Raws of features
+            representing the train samples.
+        y_train (ndarray[nb_train_sample]): The class index of train samples.
+        cvp (sklearn.model_selection._split.ShuffleSplit): The cross-validation
+            procedure.
+        acp_components (int or list of int): Either a list of index of features
+            to keep or an int as number of features to keep using ACP.
+        model (str, default='rd_forest'): Type of classifier to train. Possible
+            values are 'rd_forest','decision_tree','adaBoost','gaussian_kernel'.
+        verbose (bool, default=True): If True, plot some information or curves
+            (depending on the trained model) about the training process.
+        model_param (dict(str: value)): Dict containing values to overide some
+            default parameter values of the model. The type of the value depend
+            on the parameter. If a key is not an optional parameter of the
+            model, it will be ignored.
+
+    Returns:
+        classifier (function): The trained classifier.
+            |  Parameters:
+            |    X (ndarray[nb_test_sample ,nb_features]): A samples set.
+            |
+            |  Returns:
+            |    predicted_Y (ndarray[nb_test_sample]): The predicted class
+            |       indexes for X
+
+    """
+
+    acp_projector = get_acp_projector(x_train, acp_components)
+    projected_X = acp_projector(X)
+
+    if model=='adaBoost':
+        projected_classifier = classifier_ada_boost(projected_X,y_train)
+    elif model=='decision_tree':
+        depth=None
+        max_depth=10
+        if 'depth' in model_param:
+            depth=model_param['depth']
+        if 'max_depth' in model_param:
+            max_depth=model_param['max_depth']
+        projected_classifier = classifier_decision_tree(projected_X,y_train,cvp,depth=depth,max_depth=max_depth,verbose=verbose)
+    elif model=='gaussian_kernel':
+        projected_classifier
+    elif model=='rd_forest':
+        n_trees=100
+        depth=None
+        max_depth=10
+        if 'n_trees' in model_param:
+            n_trees=model_param['n_trees']
+        if 'depth' in model_param:
+            depth=model_param['depth']
+        if 'max_depth' in model_param:
+            max_depth=model_param['max_depth']
+        projected_classifier = classifier_random_forest(projected_X,y_train,cvp,n_trees=n_trees,depth=depth,max_depth=max_depth,verbose=verbose)
+
+    def classifier(X):
+        projected_X = acp_projector(X)
+        predicted_Y = projected_classifier(projected_X)
+        return predicted_Y
+
+    return classifier
+
+
+# --------------------------  Test the model -------------------------- #
