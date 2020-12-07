@@ -396,7 +396,7 @@ def train_classifier(x_train, y_train, cvp, acp_components=None, model='rd_fores
 
 
 #Guillaume
-def test_classifier(classifier,x_test,y_test):
+def test_classifier(classifier,x_test,y_test,returns=None):
     """Return information about the classification.
 
     Parameters:
@@ -409,22 +409,31 @@ def test_classifier(classifier,x_test,y_test):
             |        indexes for X.
         x_test(ndarray): The samples of the test set.
         y_test(ndarray) : The class indexes of test samples.
+        returns: Which can of return you desired (None,'accuracy','recall' or
+        'precision'). If None just dispay all informations.
 
     Returns:
         None
 
     """
     y_pred=classifier(x_test)
-    mat=metrics.confusion_matrix(y_test,y_pred)
-    print("Number of True Positiv:%s"%mat[1,1])
-    print("Number of True Negativ:%s"%mat[0,0])
-    print("Number of False Positiv:%s"%mat[0,1])
-    print("Number of False Negativ:%s"%mat[1,0])
-    print("\nComplet Report")
-    print(metrics.classification_report(y_test,y_pred))
-    print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,average=None))
-    print("\nrecall= %s"%metrics.recall_score(y_test,y_pred,average=None))
-    print("\naccuracy= %s"%metrics.accuracy_score(y_test,y_pred))
+    if returns==None:
+        mat=metrics.confusion_matrix(y_test,y_pred)
+        print("Number of True Positiv:%s"%mat[1,1])
+        print("Number of True Negativ:%s"%mat[0,0])
+        print("Number of False Positiv:%s"%mat[0,1])
+        print("Number of False Negativ:%s"%mat[1,0])
+        print("\nComplet Report")
+        print(metrics.classification_report(y_test,y_pred))
+        print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,average=None))
+        print("\nrecall= %s"%metrics.recall_score(y_test,y_pred,average=None))
+        print("\naccuracy= %s"%metrics.accuracy_score(y_test,y_pred))
+    elif returns=='accuracy':
+        return metrics.accuracy_score(y_test,y_pred)
+    elif returns=='recall':
+        return metrics.recall_score(y_test,y_pred)
+    elif returns=='precision':
+        return metrics.precision_score(y_test,y_pred)
 
 
 # -------------------------- Models -------------------------- #
