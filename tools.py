@@ -286,7 +286,8 @@ def get_acp_projector(X,select_features):
     Parameters:
         X (numpy.ndarray) : The samples set.
         select_features (int or list of int): Either a list of index of features
-            to keep or an int as number of features to keep using ACP.
+            to keep or an int as number of features to keep using ACP. Keep same
+            samples set if None.
 
     Returns:
         pojector (function): The trained classifier.
@@ -300,16 +301,19 @@ def get_acp_projector(X,select_features):
     """
 
     if type(select_features)==list:
-        def pojector(X):
+        def projector(X):
             return X[:,select_features]
 
     elif type(select_features)==int:
         acp=PCA(select_features)
         X=acp.fit(X)
-        def pojector(X):
+        def projector(X):
             return acp.transform(X)
 
-    return pojector
+    elif select_features==None:
+        def projector(X):
+            return X
+    return projector
 
 
 # Alexandre
