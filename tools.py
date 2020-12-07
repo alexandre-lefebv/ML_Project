@@ -242,7 +242,7 @@ def clean_dataset(df,class_index=None,fill_missing_with='median'):
 
 
 # Alexandre
-def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
+def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1,n_splits=1000):
     """ Split data between training and test set, define the cross-validation.
 
     Parameters:
@@ -273,7 +273,7 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
     """
 
     x_train,x_test,y_train,y_test = train_test_split(X,Y,test_size=test_size)
-    cvp = ShuffleSplit(test_size=cv_test_size,n_splits=1000)
+    cvp = ShuffleSplit(test_size=cv_test_size,n_splits=n_splits)
 
     return x_train, x_test, y_train, y_test, cvp
 
@@ -303,23 +303,23 @@ def get_acp_projector(X,select_features=None):
     """
 
     if type(select_features)==list:
-        def projector(X):
-            return X[:,select_features]
+        def projector(x):
+            return x[:,select_features]
 
     elif type(select_features)==int:
         acp=PCA(select_features)
         X=acp.fit(X)
-        def projector(X):
-            return acp.transform(X)
+        def projector(x):
+            return acp.transform(x)
 
     elif select_features==None:
-        def projector(X):
-            return X
+        def projector(x):
+            return x
     return projector
 
 
 # Alexandre
-def train_classifier(x_train, y_train, cvp, acp_components=None, model='rd_forest', verbose=False, model_param={}):
+def train_classifier(x_train, y_train, cvp, acp_components=None, model='adaBoost', verbose=False, model_param={}):
     """ Train a binary classification model and return the classifier.
 
     Parameters:
@@ -330,7 +330,7 @@ def train_classifier(x_train, y_train, cvp, acp_components=None, model='rd_fores
             procedure.
         acp_components (int or list of int): Either a list of index of features
             to keep or an int as number of features to keep using ACP.
-        model (str, default='rd_forest'): Type of classifier to train. Valide
+        model (str, default='adaBoost'): Type of classifier to train. Valide
             models are 'adaBoost', 'decision_tree', 'svm_gaussian_kernel' and
             'rd_forest'.
         verbose (bool, default=True): If True, plot some information or curves
@@ -400,20 +400,22 @@ def test_classifier(classifier,x_test,y_test,returns=None):
     """Return information about the classification.
 
     Parameters:
-        classifier(function): the classifier
+        classifier (function): the classifier
             |  Parameters:
             |    sample (ndarray): A samples set.
             |
             |  Returns:
             |    predicted_Y (ndarray[nb_test_sample]): The predicted class
             |        indexes for X.
-        x_test(ndarray): The samples of the test set.
-        y_test(ndarray) : The class indexes of test samples.
-        returns: Which can of return you desired (None,'accuracy','recall' or
-        'precision'). If None just dispay all informations.
+        x_test (ndarray): The samples of the test set.
+        y_test (ndarray) : The class indexes of test samples.
+        returns (str or None): Choose what the function should return. Valide
+            values are None,'accuracy','recall' and 'precision'. If None is
+            passed, this function only display tests information about the
+            classifier.
 
     Returns:
-        None
+        (float or None): see 'returns' parameter.
 
     """
     y_pred=classifier(x_test)
@@ -425,7 +427,8 @@ def test_classifier(classifier,x_test,y_test,returns=None):
         print("Number of False Negativ:%s"%mat[1,0])
         print("\nComplet Report")
         print(metrics.classification_report(y_test,y_pred))
-        print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,average=None))
+        print("\nprecision= %s"%metrics.precision_score(y_test,y_pred,
+            average=None))
         print("\nrecall= %s"%metrics.recall_score(y_test,y_pred,average=None))
         print("\naccuracy= %s"%metrics.accuracy_score(y_test,y_pred))
     elif returns=='accuracy':
@@ -493,7 +496,7 @@ def classifier_svm_gaussian_kernel(x_train,y_train,cvp,gamma=None,verbose=False)
 
     if gamma==None:
         n = np.shape(x_train)[0]
-        gammas = np.linspace(0.01,1.5,10)
+        gammas = np.linspace(0.01,10,10)
         RMSE_svm = []
 
         for gamma in gammas:
