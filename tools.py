@@ -53,6 +53,8 @@ def read_data(fname):
     """
 
     df = pd.read_csv(fname,sep='\s*\t*[,]\s*\t*',engine='python')
+    if 'id' in df.columns:
+        df = df.drop(columns='id')
     return df
 
 
@@ -204,12 +206,12 @@ def normalize_data(X):
     X=X-np.mean(X,axis=0)
     norms=np.linalg.norm(X, ord=2, axis=0)
     norms[norms==0]=1 # to avoid division by 0
-
-    return X/norms # normalized
+    X=X/norms # normalized
+    return X 
 
 
 # Alexandre
-def clean_data(df,class_index=None,fill_missing_with='median'):
+def clean_dataset(df,class_index=None,fill_missing_with='median'):
     """ Wrapper for applying all the preprocessing funtions in one call.
 
     Parameters:
@@ -229,8 +231,8 @@ def clean_data(df,class_index=None,fill_missing_with='median'):
     X,Y = rm_raw_without_class_id(X,Y)
     X = replace_string_by_int(X)
     Y = replace_string_by_int(Y)
-    print()
     X = fill_missing_values(X,Y,fill_missing_with=fill_missing_with)
+    X = normalize_data(X) 
 
     return X,Y
 
@@ -270,7 +272,7 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
 
     """
 
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size)
+    x_train,x_test,y_train,y_test = train_test_split(X,Y,test_size=test_size)
     cvp = ShuffleSplit(test_size=cv_test_size,n_splits=1000)
 
     return x_train, x_test, y_train, y_test, cvp
@@ -280,14 +282,14 @@ def split_dataset(X, Y,test_size=0.25,cv_test_size=0.1):
 
 
 # Guillaume
-def get_acp_projector(X,select_features):
+def get_acp_projector(X,select_features=None):
     """Select some features to keep and eventually adjust the set of samples.
 
     Parameters:
         X (numpy.ndarray) : The samples set.
-        select_features (int or list of int): Either a list of index of features
-            to keep or an int as number of features to keep using ACP. Keep same
-            samples set if None.
+        select_features (int, list of int or None, default=None): Either a list
+            of index of features to select or an int as number of features to
+            select using ACP. Return X if select_features is None.
 
     Returns:
         pojector (function): The trained classifier.
@@ -317,7 +319,7 @@ def get_acp_projector(X,select_features):
 
 
 # Alexandre
-def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', verbose=False, model_param={}):
+def train_classifier(x_train, y_train, cvp, acp_components=None, model='rd_forest', verbose=False, model_param={}):
     """ Train a binary classification model and return the classifier.
 
     Parameters:
@@ -338,7 +340,7 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
             on the parameter. If a key is not an optional parameter of the
             model, it will be ignored.
 
-     Returns:
+    Returns:
         classifier (function): The trained classifier.
             |  Parameters:
             |    X (ndarray[nb_test_sample ,nb_features]): A samples set.
@@ -350,7 +352,7 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
     """
 
     acp_projector = get_acp_projector(x_train, acp_components)
-    projected_X = acp_projector(X)
+    projected_X = acp_projector(x_train)
 
     if model=='adaBoost':
         projected_classifier = classifier_ada_boost(projected_X,y_train)
@@ -361,10 +363,14 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
             depth=model_param['depth']
         if 'max_depth' in model_param:
             max_depth=model_param['max_depth']
-        projected_classifier = classifier_decision_tree(projected_X,y_train,cvp,depth=depth,max_depth=max_depth,verbose=verbose)
+        projected_classifier = classifier_decision_tree(projected_X,y_train,cvp,
+            depth=depth,max_depth=max_depth,verbose=verbose)
     elif model=='svm_gaussian_kernel':
-
-        projected_classifier = 
+        gamma=None
+        if 'gamma' in model_param:
+            gamma=model_param['gamma']
+        projected_classifier = classifier_svm_gaussian_kernel(projected_X,
+            y_train,cvp,gamma=gamma,verbose=verbose)
     elif model=='rd_forest':
         n_trees=100
         depth=None
@@ -375,7 +381,8 @@ def train_classifier(x_train, y_train, cvp, acp_components, model='rd_forest', v
             depth=model_param['depth']
         if 'max_depth' in model_param:
             max_depth=model_param['max_depth']
-        projected_classifier = classifier_random_forest(projected_X,y_train,cvp,n_trees=n_trees,depth=depth,max_depth=max_depth,verbose=verbose)
+        projected_classifier = classifier_random_forest(projected_X,y_train,cvp,
+            n_trees=n_trees,depth=depth,max_depth=max_depth,verbose=verbose)
 
     def classifier(X):
         projected_X = acp_projector(X)
@@ -450,7 +457,7 @@ def classifier_ada_boost(x_train, y_train):
 
 
 #Alexandre
-def classifier_svm_gaussian_kernel(x_train,y_train,cvp,bandwidth='sylverman'):
+def classifier_svm_gaussian_kernel(x_train,y_train,cvp,gamma=None,verbose=False):
     """Return a gaussian kernel classifier.
 
     Parameters:
@@ -458,8 +465,10 @@ def classifier_svm_gaussian_kernel(x_train,y_train,cvp,bandwidth='sylverman'):
         y_train(ndarray) : The class indexes of training samples.
         cvp(sklearn.model_selection._split.ShuffleSplit): The cross-validation
             procedure.
-        bandwidth(float or 'sylverman', default='sylverman'): The bandwidth of
-            the kernel, ie the variance of the gaussians.
+        gamma (float or None, default=None): The kernel parameter, ie 1/variance
+            of the gaussians.
+        verbose (bool, default=True): If True, plot some information or curves
+            (depending on the trained model) about the training process.
 
     Returns:
         classifier (function): The trained classifier.
@@ -472,20 +481,21 @@ def classifier_svm_gaussian_kernel(x_train,y_train,cvp,bandwidth='sylverman'):
 
     """
 
-    if bandwidth=='sylverman':
-        bandwidth=1.06*n**(-1/5)
 
-    if True:
-        gammas = np.linspace(0, 100*1/n, 100)
+    if gamma==None:
+        n = np.shape(x_train)[0]
+        gammas = np.linspace(0.5,1.5,10)
         RMSE_svm = []
 
         for gamma in gammas:
             class_svm = SVC(kernel='rbf',gamma=gamma)
-            RMSE_svm[i] = np.median(np.sqrt(-cross_val_score(class_svm,
-                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp)))
-        depth=depths[np.argmin(RMSE_svm)]
+            RMSE_svm.append(np.median(np.sqrt(-cross_val_score(class_svm,
+                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+
+        gamma=gammas[np.argmin(RMSE_svm)]
 
         if verbose==True:
+            plt.figure()
             plt.plot(gammas,RMSE_svm)
             plt.xlabel("Gamma")
             plt.ylabel("RMSE")
@@ -526,15 +536,18 @@ def classifier_decision_tree(x_train,y_train,cvp, depth=None,max_depth=10,verbos
     """
 
     if depth==None:
-        depths = list(range(1, max_depth))
+        depths = list(range(1, max_depth+1))
         RMSE_tree = []
+
         for depth in depths:
             class_tree = DecisionTreeClassifier(max_depth=depth)
             RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
                 x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+
         depth=depths[np.argmin(RMSE_tree)]
 
         if verbose==True:
+            plt.figure()
             plt.plot(depths,RMSE_tree)
             plt.xlabel("Depth")
             plt.ylabel("RMSE")
@@ -575,15 +588,18 @@ def classifier_random_forest(x_train, y_train,cvp, n_trees=100,depth=None, max_d
     """
 
     if depth==None:
-        depths = np.linspace(1, max_depth, max_depth)
+        depths = list(range(1, max_depth+1))
         RMSE_tree = []
+
         for depth in depths:
             class_tree = DecisionTreeClassifier(max_depth=depth)
             RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
                 x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+
         depth=depths[np.argmin(RMSE_tree)]
 
         if verbose==True:
+            plt.figure()
             plt.plot(depths,RMSE_tree)
             plt.xlabel("Depth")
             plt.ylabel("RMSE")
