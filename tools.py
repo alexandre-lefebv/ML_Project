@@ -204,7 +204,7 @@ def normalize_data(X):
 
     """
     X=X-np.mean(X,axis=0)
-    norms=np.linalg.norm(X, ord=2, axis=0)
+    norms=np.std(X, axis=0)
     norms[norms==0]=1 # to avoid division by 0
     X=X/norms # normalized
     return X 
@@ -493,11 +493,11 @@ def classifier_svm_gaussian_kernel(x_train,y_train,cvp,gamma=None,verbose=False)
 
     if gamma==None:
         n = np.shape(x_train)[0]
-        gammas = np.linspace(0.5,1.5,10)
+        gammas = np.linspace(0.01,1.5,10)
         RMSE_svm = []
 
         for gamma in gammas:
-            class_svm = SVC(kernel='rbf',gamma=gamma)
+            class_svm = SVC(kernel='rbf',gamma=gamma/n)
             RMSE_svm.append(np.median(np.sqrt(-cross_val_score(class_svm,
                 x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
 
@@ -548,8 +548,8 @@ def classifier_decision_tree(x_train,y_train,cvp, depth=None,max_depth=10,verbos
         depths = list(range(1, max_depth+1))
         RMSE_tree = []
 
-        for depth in depths:
-            class_tree = DecisionTreeClassifier(max_depth=depth)
+        for d in depths:
+            class_tree = DecisionTreeClassifier(max_depth=d)
             RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
                 x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
 
@@ -600,10 +600,11 @@ def classifier_random_forest(x_train, y_train,cvp, n_trees=100,depth=None, max_d
         depths = list(range(1, max_depth+1))
         RMSE_tree = []
 
-        for depth in depths:
-            class_tree = DecisionTreeClassifier(max_depth=depth)
-            RMSE_tree.append(np.median(np.sqrt(-cross_val_score(class_tree,
-                x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))))
+        for d in depths:
+            class_tree = DecisionTreeClassifier(max_depth=d)
+            temp = np.sqrt(-cross_val_score(class_tree,x_train, y_train,scoring='neg_mean_squared_error', cv=cvp))
+            temp.sort()
+            RMSE_tree.append(np.median(temp))
 
         depth=depths[np.argmin(RMSE_tree)]
 
